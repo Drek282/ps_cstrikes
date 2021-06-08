@@ -1,0 +1,5 @@
+--- DREK ---
+
+
+Version 3.2.8b (in progress)
+[Changed] Counter-Strike: Source support separated from Counter-Strike support.
