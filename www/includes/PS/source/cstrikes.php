@@ -6,8 +6,8 @@
 	Halflife::cstrikes mod support for PsychoStats front-end
 */
 if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));
-if (defined("CLASS_PS_SOURCE_CSTRIKE_PHP")) return 1;
-define("CLASS_PS_SOURCE_CSTRIKE_PHP", 1);
+if (defined("CLASS_PS_SOURCE_CSTRIKES_PHP")) return 1;
+define("CLASS_PS_SOURCE_CSTRIKES_PHP", 1);
 
 include_once(dirname(__DIR__) . '/source.php');
 
