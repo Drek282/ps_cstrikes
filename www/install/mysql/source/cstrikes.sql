@@ -153,3 +153,7 @@ INSERT INTO `ps_config_awards` (`id`, `enabled`, `idx`, `type`, `negative`, `cla
         (23,1,50,'player',1,'','Worst Teammate','','{$player.link} has killed the most teammates ({$award.value})','{$ffkills}','desc','',0,'commify',NULL,NULL,1,'Player with the most friendly fire kills (ie: Worst Teammate)'),
         (25,1,60,'player',1,'','Worst Team Kill Percentage','','{$player.link} has the highest team kill percentage ({$award.value})','{$ffkills} / {$kills} * 100','desc','',0,'%0.02f%%',NULL,NULL,1,'Player with the highest team kill percentage.'),
         (26,1,120,'player',1,'','Most Hostages Killed','','{$player.link} has killed the most hostages ({$award.value})','{$killedhostages}','desc','',0,'%s','source','cstrikes',1,'Players that like to kill hostages instead of rescuing them.');
+        
+INSERT INTO `ps_config` (`id`, `conftype`, `section`, `var`, `value`, `label`, `type`, `locked`, `verifycodes`, `options`, `help`) 
+    VALUES 
+        (1,'main',NULL,'meta_keywords','PsychoStats Game Server Player Statistics Counter-Strike Source Valve','Site HTML Meta Key Words','text',0,'','','These are the HTML meta key words for your PsychoStats.  They are used by search engines to provide search results.');
