@@ -80,6 +80,7 @@ function init() {
 	$this->plrstr = 'U';
 	$this->rulestr = 'V';
 	$this->pingstr = 'i';
+	if ($this->DEBUG) print nl2br("DEBUG: \nA2S_INFO header > " . $this->infostr . "\nA2S_PLAYER header > " . $this->plrstr . "\nA2S_RULES header > " . $this->rulestr . "\n\n");
 
 	$this->challenge_id = '';
 	$this->compressed = false;
@@ -130,6 +131,7 @@ function _getchallenge($ip=NULL) {
 	if (!$ip) $ip = $this->ipaddr();
 	if (!$ip) return '';
 	if (!$this->challenge_id) {
+		if ($this->DEBUG) print nl2br("DEBUG: Getting challenge number...\n");
 		// fix for recent change to HLDS HL1 servers. 10/31/2008.
 		//$res = $this->_sendquery($ip, 'W');
 		$res = $this->_sendquery($ip, 'U' . pack("V", -1));
@@ -147,7 +149,8 @@ function query_info($ip=NULL) {
 	if (!$ip) $ip = $this->ipaddr();
 	if (!$ip) return FALSE;
 	$start = $this->_getmicrotime();
-	$res = $this->_sendquery($ip, $this->infostr);
+	//$res = $this->_sendquery($ip, $this->infostr);
+	$res = $this->_sendquery($ip, $this->infostr . pack("V", $this->_getchallenge($ip)));
 	$end = $this->_getmicrotime();
 	if (!$res) return FALSE;
 	$ver = $this->_hlver();			// get proper version 
@@ -172,7 +175,7 @@ function query_info($ip=NULL) {
 
 // internal function to parse source version 2 'info' packets
 function _parse_info_source2() {
-	if ($this->DEBUG) print "DEBUG: Parsing Halflife2 info packet...\n";
+	if ($this->DEBUG) print "DEBUG: Parsing Halflife2 info packet...<br>";
 	$this->raw = substr($this->raw, 5);	// strip off response header bytes
 	$this->data['protocol']			= $this->_getbyte();	// 6
 	$this->data['name'] 			= $this->_getnullstr();
@@ -248,6 +251,9 @@ function query_rules($ip=NULL) {
 			if ($this->raw == '') break;
 			$this->data['rules'][ trim($this->_getnullstr()) ] = trim($this->_getnullstr());
 		}
+		//echo "<br><textarea rows=\"150\" cols=\"130\">";
+		//print_r ($this->data);
+		//echo "</textarea>";
 		return $this->data;
 	}
 	return FALSE;
@@ -412,7 +418,7 @@ function _rconwrite2($cmd, $str1="", $str2="") {
 	$authid = $this->rcon_auth_id;
 	$data = pack("VV", $authid, $cmd) . $str1 . "\0" . $str2 . "\0";
 	$packet = pack("V", strlen($data)) . $data;
-	if ($this->DEBUG) print "DEBUG: Sending rcon packet:\n" . $this->hexdump($packet) . "\n";
+	if ($this->DEBUG) print nl2br("DEBUG: Sending rcon packet:\n" . $this->hexdump($packet) . "\n");
 	return @fwrite($this->rconsock, $packet, strlen($packet));
 }
 
@@ -499,7 +505,7 @@ function _sendquery($ipport, $cmd) {
 	$command = pack("V", -1) . $cmd;
 	$this->raw = "";
 
-	if ($this->DEBUG) print "DEBUG: Sending query to $ip:$port:\n" . $this->hexdump($command) . "\n";
+	if ($this->DEBUG) print "DEBUG: Sending query [". substr("$cmd",0,-4) ."] to $ip:$port:\n" . $this->hexdump($command);
 	fwrite($this->sock, $command, strlen($command));
 	$start = $this->_getmicrotime();
 
@@ -520,7 +526,7 @@ function _sendquery($ipport, $cmd) {
 		}
 
 		$time = sprintf("%0.4f", $this->_getmicrotime() - $start);
-		if ($this->DEBUG) print "\nDEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port ...\n"; // . $this->hexdump($packet) . "\n";
+		if ($this->DEBUG) print "DEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port ...<br>\n";// . $this->hexdump($packet) . "";
 
 		$header = substr($packet, 0, 4);				// get the 4 byte header
 		// ugly 64bit hack. If the PHP_INT_SIZE is not 4 then we'll use "i" to unpack the header.
@@ -528,21 +534,23 @@ function _sendquery($ipport, $cmd) {
 		// i can't get anything else to work since PHP is a bitch when it comes to large 32bit+ integers.
 		$ack = @unpack(PHP_INT_SIZE == 4 ? 'V' : 'i', $header);
 		$split = $ack[1];
-		if ($this->DEBUG) printf("DEBUG: ACK = 0x%X (%d)\n", $split, $split);
+		if ($this->DEBUG) printf("DEBUG: ACK = 0x%X (%d)<br>\n", $split, $split);
 		if ($split == -2) {						// we need to deal with multiple packets
-			if ($this->DEBUG) printf("DEBUG: Response is split!\n");
+			if ($this->DEBUG) printf("DEBUG: Response is split!<br>\n");
 
 			$packet = substr($packet, 4);				// strip off the leading 4 bytes
 			$header = substr($packet, 0, 4);			// get the 'sub-header ack'
-			$packet = substr($packet, 4);				// strip off 32bit ID
+			$packet = substr($packet, 4);				// strip off 32bit packet ID
 
 			$size = $this->_hlver() <= 1 ? 1 : 2;			// HL1 = 1 byte, HL2(source) = 2 bytes
 			$pnum = substr($packet, 0, $size);			// get packet number
 			$packet = substr($packet, $size);
-
+//die(print $pnum);
+//die($this->hexdump($pnum));
 			$this->reqid = $this->_unpack('V', $header);		// save the request ID
 			$this->compressed = false;
 			if ($size == 1) {
+				//echo "# We use byte #<br>";
 				$byte = $this->_unpack("C", $pnum);
 				if (!$expected) {
 					$expected = $byte & 0x0F;
@@ -550,6 +558,7 @@ function _sendquery($ipport, $cmd) {
 				}
 				$this->seq = $byte >> 4;
 			} else {
+				//echo "# We use short byte #<br>";
 				$short = $this->_unpack("v", $pnum);
 				if (!$expected) {
 					$expected = $short & 0x00FF;
@@ -592,7 +601,7 @@ function _sendquery($ipport, $cmd) {
 					}
 					if ($has_splitsize) {
 						$splitsize = $this->_unpack('v', substr($packet, 0, 2));
-						if ($this->DEBUG) printf("DEBUG: Split size is %s (0x%04X)\n", number_format($splitsize), $splitsize);
+						if ($this->DEBUG) printf("DEBUG: Split size is %s (0x%04X)<br>\n", number_format($splitsize), $splitsize);
 						$packet = substr($packet, 2);
 					}
 				}
@@ -606,7 +615,7 @@ function _sendquery($ipport, $cmd) {
 			$packets[0] = $packet;
 			$expected = 0;
 		}
-		if ($this->DEBUG) print $this->hexdump($original) . "\n";
+		if ($this->DEBUG) print "\n" . $this->hexdump($original) . "\n";
 	} while ($expected and $retry < $this->maxretries());
 
 	fclose($this->sock);
